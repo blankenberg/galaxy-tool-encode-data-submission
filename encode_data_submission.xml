@@ -1,0 +1,89 @@
+<tool id="encode_data_submission" name="Encode Data Submission" version="0.0.1">
+  <command interpreter="python">encode_data_submission.py
+      -n "${submission_name}"
+      -f "${template_file}"
+      -m "${mapping_file}"
+      -v "${default_value_file}"
+      -d "${output_ddf}"
+      -r "${ref_daf}"
+      #if str( $keep_tarball ) == 'keep_yes':
+          -t "${output_tarball}"
+      #end if
+      -u "${ftp_login}"
+      -o "${upload_opts}"
+      -l "${output_log}"
+  </command>
+  <inputs>
+    <param type="text" size="40" name="submission_name" label="Submission name" help="Eg. HardisonCTCF_G1E (no special characters, underscores only)">
+      <validator type="empty_field" />
+    </param>
+    <param type="data" name="ref_daf" label="Reference .DAF file" />
+
+    <param type="text" size="40" name="ftp_login" label="FTP Login info" help="username:password" />
+    <param name="library_datasets" type="library_data" label="Library Datasets" />
+    <param name="upload_opts" type="select" display="radio" label="Upload Options">
+      <option value="up_none">Upload nothing (just generates DDF)</option>
+      <option value="up_all">Upload DDF/DAF files + datasets</option>
+      <option value="up_daf">Upload DDF/DAF files only</option>
+      <option value="up_datasets">Upload datasets only</option>
+    </param>
+    <param name="keep_tarball" type="select" display="radio" label="Keep tarball?">
+      <option value="keep_no" selected="True">No</option>
+      <option value="keep_yes">Yes</option>
+    </param>
+    <repeat name="name_mappings" title="Field name to variable name mapping">
+      <param type="text" name="variable_name" label="DAF variable name">
+        <validator type="empty_field" />
+      </param>
+      <param type="text" name="template_field_name" label="Library template field name">
+        <validator type="empty_field" />
+      </param>
+      <param type="boolean" name="use_label" label="Use label instead of field name" truevalue="use_label" false_value="use_name" />
+    </repeat>
+    <repeat name="default_values" title="Default value">
+      <param type="text" name="variable_name" label="DAF variable name">
+        <validator type="empty_field" />
+      </param>
+      <param type="text" name="default_value" label="Default value">
+      </param>
+      <param type="boolean" name="force_override" label="Force this value to override template values" truevalue="force_override" false_value="dont_force_override" />
+    </repeat>
+  </inputs>
+  <outputs>
+    <data format="txt" name="output_log" label="ENCODE log file for ${submission_name}" />
+    <data format="tabular" name="output_ddf" label="ENCODE DDF file for ${submission_name}" />
+    <data format="tgz" name="output_tarball" label="ENCODE TAR file for ${submission_name}">
+        <filter>keep_tarball == 'keep_yes'</filter>
+    </data>
+  </outputs>
+  
+  <configfiles>
+    <configfile name="template_file">&lt;%
+import simplejson
+%&gt;
+#set $output_dict = {}
+#for $ldda in $library_datasets:
+    #set $output_dict[$ldda.name] = dict( filename=$ldda.file_name, name_template=$ldda.templates_dict( use_name=True ), label_template=$ldda.templates_dict() )
+#end for
+${ simplejson.dumps( $output_dict ) }
+    </configfile>
+    <configfile name="mapping_file">&lt;%
+import simplejson
+%&gt;
+#set $output_dict = {}
+#for $name_mapping in $name_mappings:
+    #set $output_dict[ str( $name_mapping[ 'variable_name' ] ) ] = dict( field_name=str( $name_mapping[ 'template_field_name' ] ), use_label=bool( $name_mapping[ 'use_label' ] ) )
+#end for
+${ simplejson.dumps( $output_dict ) }
+    </configfile>
+    <configfile name="default_value_file">&lt;%
+import simplejson
+%&gt;
+#set $output_dict = {}
+#for $default_value in $default_values:
+    #set $output_dict[ str( $default_value[ 'variable_name' ] ) ] = dict( default_value=str( $default_value[ 'default_value' ] ), force_override=bool( $default_value[ 'force_override' ] ) )
+#end for
+${ simplejson.dumps( $output_dict ) }
+    </configfile>
+  </configfiles>
+</tool>
